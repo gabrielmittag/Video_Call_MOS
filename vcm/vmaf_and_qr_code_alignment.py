@@ -53,7 +53,8 @@ def prepare(deg_video, ref_video, tmp_dir, verbosity):
     width = int(cap_deg.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap_deg.get(cv2.CAP_PROP_FRAME_HEIGHT))
     if width != 1920 or height != 1080:
-        print("not 1080p, resizing ...")
+        if verbosity:
+            print(f"deg video not 1080p. resizing {deg_video} and saving as {deg_path_new}")
         deg_path_new = os.path.join(tmp_dir, os.path.basename(deg_video))
         ff_args = [
             'ffmpeg',
