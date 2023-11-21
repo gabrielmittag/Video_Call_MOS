@@ -12,7 +12,7 @@ vidqr_buffer=-10
 vidqr_border_size=10
 
 def get_vmaf(deg_video, ref_video, tmp_dir, clean_up=True, verbosity=1):
-    vmaf_results_csv = prepare(deg_video, ref_video, tmp_dir)
+    vmaf_results_csv, deg_video = prepare(deg_video, ref_video, tmp_dir, verbosity)
     if verbosity:
         print("Detecting QR codes of degraded video")
     ref_frames = detect_frames(deg_video, verbosity=verbosity)
@@ -36,7 +36,7 @@ def get_vmaf(deg_video, ref_video, tmp_dir, clean_up=True, verbosity=1):
         print("VMAF computation done")
     return df_vmaf
 
-def prepare(deg_video, ref_video, tmp_dir):
+def prepare(deg_video, ref_video, tmp_dir, verbosity):
     if not os.path.exists(ref_video):
         raise ValueError(f"Ref video not found! Path: {ref_video}")
     if not os.path.exists(deg_video):
@@ -48,8 +48,28 @@ def prepare(deg_video, ref_video, tmp_dir):
         tmp_sub_dir = os.path.join(tmp_dir, sub_dir)
         shutil.rmtree(tmp_sub_dir, ignore_errors=True)
         os.makedirs(tmp_sub_dir)
+
+    cap_deg = cv2.VideoCapture(deg_video)
+    width = int(cap_deg.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap_deg.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    if width != 1920 or height != 1080:
+        print("not 1080p, resizing ...")
+        deg_path_new = os.path.join(tmp_dir, os.path.basename(deg_video))
+        ff_args = [
+            'ffmpeg',
+            '-i',
+            deg_video,
+            "-vf",
+            "scale=1920:1080",
+            "-c:a",
+            "copy",
+            deg_path_new,
+        ]
+        run_process(ff_args, verbosity)
+        deg_video = deg_path_new
+
     vmaf_results_csv = os.path.join(tmp_dir, os.path.basename(deg_video).split('.')[0]+'.csv')
-    return vmaf_results_csv
+    return vmaf_results_csv, deg_video
 
 def detect_single_frame(img, marker_pos, buffer, border_size):
     img_1 = img[marker_pos['marker_1_y1']-buffer:marker_pos['marker_1_y2']+buffer, marker_pos['marker_1_x1']-buffer:marker_pos['marker_1_x2']+buffer]
